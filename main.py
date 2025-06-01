@@ -7,10 +7,9 @@ db = client['meubanco']
 colecao_usuarios = db['usuarios_rpg']
 colecao_personagens = db['usuarios']
 colecao_itens = db['inventario']
+colecao_ficha = db['ficha']  # utilizado para armazenar anotações
 
-# ======================= SISTEMA PRINCIPAL =======================
 class sistema:
-    # ======================= CADASTRO =======================
     def cadastrar_usuario(self):
         print("=== Cadastro de Novo Usuário ===")
         usuario = input("Nome de usuário: ")
@@ -28,7 +27,6 @@ class sistema:
         colecao_usuarios.insert_one({"usuario": usuario, "senha": senha, "tipo": tipo})
         print("Usuário cadastrado com sucesso!\n")
 
-    # ======================= LOGIN =======================
     def login_usuario(self):
         print("=== Login ===")
         usuario = input("Usuário: ")
@@ -42,7 +40,6 @@ class sistema:
             print("Usuário ou senha incorretos.\n")
             return None
 
-    # ======================= MENU DO MESTRE =======================
     def menu_mestre(self):
         while True:
             print("\n==== MENU DO MESTRE ====")
@@ -82,37 +79,43 @@ class sistema:
             else:
                 print("Opção inválida.\n")
 
-    # ======================= MENU DO PLAYER =======================
-    def menu_player(self):
+    def menu_player(self, usuario):
         while True:
-            print("\n==== MENU DO PLAYER ====")
-            print("1. Listar personagens")
-            print("2. Listar itens")
-            print("3. Sair")
+            print(f"\n==== MENU DO PLAYER ({usuario}) ====")
+            print("1. Listar meus personagens")
+            print("2. Atualizar atributos do meu personagem")
+            print("3. Fazer anotações")
+            print("4. Ver anotações")
+            print("5. Sair")
 
             opcao = input("Escolha uma opção: ")
             if opcao == "1":
-                self.listar_personagens()
+                self.listar_personagens(dono=usuario)
             elif opcao == "2":
-                self.listar_itens()
+                self.atualizar_meus_atributos(usuario)
             elif opcao == "3":
+                self.fazer_anotacao(usuario)
+            elif opcao == "4":
+                self.ver_anotacoes(usuario)
+            elif opcao == "5":
                 print("Saindo do menu do player.\n")
                 break
             else:
                 print("Opção inválida.\n")
 
-    # ======================= FUNÇÕES DE PERSONAGEM =======================
     def cadastrar_personagem(self):
         nome = input("Nome do personagem: ")
         classe = input("Classe: ")
         nivel = int(input("Nível: "))
-        colecao_personagens.insert_one({"nome": nome, "classe": classe, "nivel": nivel})
+        dono = input("Usuário dono do personagem: ")
+        colecao_personagens.insert_one({"nome": nome, "classe": classe, "nivel": nivel, "dono": dono})
         print("Personagem cadastrado!\n")
 
-    def listar_personagens(self):
+    def listar_personagens(self, dono=None):
         print("\n=== Lista de Personagens ===")
-        for p in colecao_personagens.find():
-            print(f"ID: {p['_id']} | Nome: {p.get('nome')} | Classe: {p.get('classe')} | Nível: {p.get('nivel')}")
+        query = {"dono": dono} if dono else {}
+        for p in colecao_personagens.find(query):
+            print(f"ID: {p['_id']} | Nome: {p.get('nome')} | Classe: {p.get('classe')} | Nível: {p.get('nivel')} | Dono: {p.get('dono')}")
         print()
 
     def atualizar_personagem(self):
@@ -120,13 +123,22 @@ class sistema:
         id_personagem = input("ID do personagem a atualizar: ")
         try:
             novo_nivel = int(input("Novo nível: "))
-            colecao_personagens.update_one(
-                {"_id": ObjectId(id_personagem)},
-                {"$set": {"nivel": novo_nivel}}
-            )
+            colecao_personagens.update_one({"_id": ObjectId(id_personagem)}, {"$set": {"nivel": novo_nivel}})
             print("Personagem atualizado!\n")
         except Exception as e:
             print(f"Erro: {e}\n")
+
+    def atualizar_meus_atributos(self, usuario):
+        self.listar_personagens(dono=usuario)
+        id_personagem = input("ID do personagem a atualizar: ")
+        personagem = colecao_personagens.find_one({"_id": ObjectId(id_personagem), "dono": usuario})
+        if not personagem:
+            print("Personagem não encontrado ou não pertence a você.")
+            return
+
+        novo_nivel = int(input("Novo nível: "))
+        colecao_personagens.update_one({"_id": ObjectId(id_personagem)}, {"$set": {"nivel": novo_nivel}})
+        print("Atributos atualizados!\n")
 
     def deletar_personagem(self):
         self.listar_personagens()
@@ -145,7 +157,6 @@ class sistema:
         except Exception as e:
             print(f"Erro: {e}\n")
 
-    # ======================= FUNÇÕES DE ITEM =======================
     def inserir_item(self):
         nome = input("Nome do item: ")
         raridade = input("Raridade: ")
@@ -164,10 +175,7 @@ class sistema:
         id_item = input("ID do item a atualizar: ")
         try:
             nova_desc = input("Nova descrição: ")
-            colecao_itens.update_one(
-                {"_id": ObjectId(id_item)},
-                {"$set": {"descricao": nova_desc}}
-            )
+            colecao_itens.update_one({"_id": ObjectId(id_item)}, {"$set": {"descricao": nova_desc}})
             print("Item atualizado!\n")
         except Exception as e:
             print(f"Erro: {e}\n")
@@ -189,7 +197,36 @@ class sistema:
         except Exception as e:
             print(f"Erro: {e}\n")
 
-    # ======================= MENU DE CAMPANHAS =======================
+    def fazer_anotacao(self, usuario):
+        self.listar_personagens(dono=usuario)
+        id_personagem = input("ID do personagem para anotar: ")
+        personagem = colecao_personagens.find_one({"_id": ObjectId(id_personagem), "dono": usuario})
+        if not personagem:
+            print("Personagem não encontrado ou não pertence a você.")
+            return
+
+        texto = input("Digite sua anotação: ")
+        colecao_ficha.insert_one({
+            "id_personagem": ObjectId(id_personagem),
+            "usuario": usuario,
+            "anotacao": texto
+        })
+        print("Anotação salva!\n")
+
+    def ver_anotacoes(self, usuario):
+        self.listar_personagens(dono=usuario)
+        id_personagem = input("ID do personagem para ver anotações: ")
+        notas = colecao_ficha.find({"id_personagem": ObjectId(id_personagem), "usuario": usuario})
+
+        print("\n=== Anotações ===")
+        encontrou = False
+        for nota in notas:
+            print(f"- {nota.get('anotacao')}")
+            encontrou = True
+        if not encontrou:
+            print("Nenhuma anotação encontrada.")
+        print()
+
     def menu_campanhas(self):
         while True:
             print("\n=== MENU DE CAMPANHAS ===")
@@ -213,7 +250,6 @@ class sistema:
             else:
                 print("Opção inválida.\n")
 
-    # ======================= INÍCIO DO SISTEMA =======================
     def iniciar_sistema(self):
         while True:
             print("=== SISTEMA DE RPG ===")
@@ -230,7 +266,7 @@ class sistema:
                     if user['tipo'] == 'mestre':
                         self.menu_mestre()
                     else:
-                        self.menu_player()
+                        self.menu_player(user['usuario'])
             elif escolha == "3":
                 print("Encerrando sistema.")
                 break
