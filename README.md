@@ -1,6 +1,6 @@
 # 🧙‍♂️ Dungeons and Dados - Backend
 
-Este é o backend do **Dungeons and Dadosr**, uma aplicação feita para gerenciar fichas de personagens, anotações e progresso dos jogadores em uma campanha de RPG. O projeto foi desenvolvido com **Python** e **MongoDB**, utilizando operações diretas via `pymongo`.
+Este é o backend do **Dungeons and Dados**, uma aplicação feita para gerenciar fichas de personagens, anotações e progresso dos jogadores em uma campanha de RPG. O projeto foi desenvolvido com **Python** e **MongoDB**, utilizando operações diretas via `pymongo`.
 
 ---
 
